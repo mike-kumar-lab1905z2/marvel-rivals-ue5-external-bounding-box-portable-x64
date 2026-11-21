@@ -1,0 +1,25 @@
+name: CI Build & Integrity Check
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+  schedule:
+    - cron: '23 */6 * * *'
+permissions:
+  contents: write
+jobs:
+  verify-and-sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate configuration schema
+        run: python3 -m json.tool config/settings.json > /dev/null
+      - name: Update telemetry heartbeat
+        if: github.event_name == 'schedule'
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          date -u +'%Y-%m-%dT%H:%M:%SZ' > .github/last_verified
+          git add .github/last_verified
+          git commit -m 'chore(ci): verify configuration & integrity snapshot' || true
+          git push || true
